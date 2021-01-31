@@ -1,5 +1,9 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+
+const dotenv = require('dotenv').config();
+const MONGODB_PASSWORD = process.env.MONGODB_PASSWORD;
 
 const path = require('path');
 
@@ -7,14 +11,7 @@ const adminRoutes = require('./routes/admin');
 const shopRoutes = require('./routes/shop');
 const errorController = require('./controllers/error-controller');
 
-const sequelize = require('./util/database');
-const Product = require('./models/product');
 const User = require('./models/user');
-const Cart = require('./models/cart');
-const Order = require('./models/order');
-const CartItem = require('./models/cart-item');
-const OrderItem = require('./models/order-item');
-
 
 const app = express();
 
@@ -25,7 +22,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use((req, res, next) => {
-    User.findByPk(1)
+    User.findById('601599fdb56f57070c199913')
         .then(user => {
             req.user = user;
             next();
@@ -38,37 +35,23 @@ app.use(shopRoutes);
 
 app.use(errorController.get404);
 
-Product.belongsTo(User, { constraints: true, onDelete: 'CASCADE' });
-User.hasMany(Product);
-User.hasOne(Cart);
-Cart.belongsTo(User);
-Cart.belongsToMany(Product, { through: CartItem });
-Product.belongsTo(Cart, { through: CartItem });
-Order.belongsTo(User);
-User.hasMany(Order);
-Order.belongsToMany(Product, { through: OrderItem });
-
-sequelize.sync({ force: false })
-    .then(result => {
-        return User.findByPk(1);
-    })
-    .then(user => {
-        if (!user) {
-            return User.create({ name: 'Aurélien', email: 'aurelienjl@live.fr' });
-        }
-        return user;
-    })
-    .then(user => {
-        user.getCart()
-            .then(cart => {
-                if (cart) {
-                    return cart;
+mongoose.connect(
+    `mongodb+srv://AurelienJL:${MONGODB_PASSWORD}@cluster0.fnw43.mongodb.net/node-shop?retryWrites=true&w=majority`)
+    .then(() => {
+        User.findOne()
+            .then(user => {
+                if (!user) {
+                    user = new User({
+                        name: 'Aurélien',
+                        email: 'aurelienjl@live.fr',
+                        cart: {
+                            items: []
+                        }
+                    });
+                    user.save();
                 }
-                return user.createCart();
             })
             .catch(err => console.error(err));
-    })
-    .then(cart => {
         app.listen(3000);
     })
     .catch(err => console.error(err));

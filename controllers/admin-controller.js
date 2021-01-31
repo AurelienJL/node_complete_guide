@@ -14,7 +14,13 @@ exports.postAddProduct = (req, res, next) => {
     const imageUrl = req.body.imageUrl;
     const description = req.body.description;
     const price = req.body.price;
-    const product = new Product(title, price, description, imageUrl, null, req.user._id);
+    const product = new Product({
+        title: title,
+        price: price,
+        description: description,
+        imageUrl: imageUrl,
+        userId: req.user // mongoose will pick the id from the user object
+    });
     product.save()
         .then(result => res.redirect('/admin/products'))
         .catch(err => console.error(err));
@@ -48,28 +54,31 @@ exports.postEditProduct = (req, res, next) => {
     const updatedPrice = req.body.price;
     const updatedImageUrl = req.body.imageUrl;
     const updatedDescription = req.body.description;
-    const product = new Product(
-        updatedTitle,
-        updatedPrice,
-        updatedDescription,
-        updatedImageUrl,
-        productId
-    );
-    product.save()
+
+    Product.findById(productId)
+        .then(product => {
+            product.title = updatedTitle;
+            product.price = updatedPrice;
+            product.imageUrl = updatedImageUrl;
+            product.description = updatedDescription;
+            return product.save();
+        })
         .then(result => res.redirect('/admin/products'))
         .catch(err => console.error(err));
 };
 
 exports.deleteProduct = (req, res, next) => {
     const productId = req.body.productId;
-    Product.deleteById(productId)
+    Product.findByIdAndDelete(productId)
         .then(result => res.redirect('/admin/products'))
         .catch(err => console.error(err));
 
 };
 
 exports.getProducts = (req, res, next) => {
-    Product.fetchAll()
+    Product.find()
+        // .populate('userId', 'name') // populate the user object and retrieve only user.name
+        // .select('title price -_id') // which field should be retrieve -or exclude from the db 
         .then(products => {
             res.render('admin/products', {
                 products: products,

@@ -3,8 +3,9 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const session = require('express-session');
 const MongodbStore = require('connect-mongodb-session')(session);
+const csurf = require('csurf');
+const flash = require('connect-flash');
 
-const dotenv = require('dotenv').config();
 const MONGODB_URI = process.env.MONGODB_URI;
 
 const path = require('path');
@@ -21,6 +22,7 @@ const store = new MongodbStore({
     uri: MONGODB_URI,
     collection: 'sessions'
 });
+const csrfProtection = csurf();
 
 app.set('view engine', 'ejs');
 app.set('views', 'views'); // default value
@@ -35,6 +37,8 @@ app.use(
         store: store
     })
 );
+app.use(csrfProtection);
+app.use(flash());
 
 app.use((req, res, next) => {
     if (!req.session.user) {
@@ -48,6 +52,12 @@ app.use((req, res, next) => {
         .catch(err => console.error(err));
 });
 
+app.use((req, res, next) => {
+    res.locals.isAuthenticated = req.session.isLoggedIn;
+    res.locals.csrfToken = req.csrfToken();
+    next();
+});
+
 app.use('/admin', adminRoutes);
 app.use(shopRoutes);
 app.use(authRoutes);
@@ -56,21 +66,5 @@ app.use(errorController.get404);
 
 mongoose.connect(
     `${MONGODB_URI}`)
-    .then(() => {
-        User.findOne()
-            .then(user => {
-                if (!user) {
-                    user = new User({
-                        name: 'Aurélien',
-                        email: 'aurelienjl@live.fr',
-                        cart: {
-                            items: []
-                        }
-                    });
-                    user.save();
-                }
-            })
-            .catch(err => console.error(err));
-        app.listen(3000);
-    })
+    .then(() => app.listen(3000))
     .catch(err => console.error(err));

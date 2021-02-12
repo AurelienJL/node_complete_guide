@@ -6,6 +6,7 @@ const MongodbStore = require('connect-mongodb-session')(session);
 const csurf = require('csurf');
 const flash = require('connect-flash');
 
+const dotenv = require('dotenv').config();
 const MONGODB_URI = process.env.MONGODB_URI;
 
 const path = require('path');

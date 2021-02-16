@@ -56,28 +56,30 @@ exports.postEditProduct = (req, res, next) => {
 
     Product.findById(productId)
         .then(product => {
+            if (product.userId.toString() !== req.user._id.toString()) {
+                return res.redirect('/');
+            }
             product.title = updatedTitle;
             product.price = updatedPrice;
             product.imageUrl = updatedImageUrl;
             product.description = updatedDescription;
-            return product.save();
+            return product.save()
+                .then(result => res.redirect('/admin/products'))
+                .catch(err => console.error(err));
         })
-        .then(result => res.redirect('/admin/products'))
         .catch(err => console.error(err));
 };
 
 exports.deleteProduct = (req, res, next) => {
     const productId = req.body.productId;
-    Product.findByIdAndDelete(productId)
+    Product.deleteOne({ _id: productId, userId: req.user._id })
         .then(result => res.redirect('/admin/products'))
         .catch(err => console.error(err));
 
 };
 
 exports.getProducts = (req, res, next) => {
-    Product.find()
-        // .populate('userId', 'name') // populate the user object and retrieve only user.name
-        // .select('title price -_id') // which field should be retrieve -or exclude from the db 
+    Product.find({ userId: req.user._id })
         .then(products => {
             res.render('admin/products', {
                 products: products,
